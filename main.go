@@ -1,13 +1,14 @@
 package main
 
 import (
-	"a-library-for-others/pkg/parser"
+	"a-library-for-others/csvparser"
 	"fmt"
 	"io"
 	"os"
 )
 
 func main() {
+	// Открываем CSV файл
 	file, err := os.Open("example.csv")
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -15,8 +16,9 @@ func main() {
 	}
 	defer file.Close()
 
-	var csvparser CSVParser = &CSVParserImpl{}
+	var csvparser csvparser.CSVParser
 
+	// Чтение файла построчно
 	for {
 		line, err := csvparser.ReadLine(file)
 		if err != nil {
@@ -26,16 +28,14 @@ func main() {
 			fmt.Println("Error reading line:", err)
 			return
 		}
+
+		// Печать строк и полей
 		fmt.Println("Line:", line)
-
-		numberOfFields := csvparser.GetNumberOfFields()
-		fmt.Println("Number of fields:", numberOfFields)
-
-		for i := 0; i < numberOfFields; i++ {
+		for i := 0; i < csvparser.GetNumberOfFields(); i++ {
 			field, err := csvparser.GetField(i)
 			if err != nil {
 				fmt.Println("Error getting field:", err)
-				continue
+				return
 			}
 			fmt.Printf("Field %d: %s\n", i, field)
 		}
