@@ -38,7 +38,9 @@ func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 	if err != nil {
 		// Если ошибка EOF, возвращаем пустую строку и nil (чтобы завершить чтение)
 		if err == io.EOF {
-			return "", io.EOF
+			// Преобразуем строку, так как она может быть не полностью очищена от \n
+			line = strings.TrimRight(line, "\r\n")
+			return line, io.EOF
 		}
 		return "", err
 	}
@@ -124,6 +126,30 @@ func main() {
 		line, err := csvparser.ReadLine(bufReader)
 		if err != nil {
 			if err == io.EOF {
+				// После окончания файла, выводим последнюю строку
+				// Если строка не пуста
+				if line != "" {
+					// Обновляем поля с помощью parseFields
+					csvparser.(*csvParser).lastFields = parseFields(line)
+					csvparser.(*csvParser).numFields = len(csvparser.(*csvParser).lastFields)
+
+					// Выводим последнюю строку
+					fmt.Println("Read last line:", line)
+
+					// Пример вывода количества полей
+					numFields := csvparser.GetNumberOfFields()
+					fmt.Printf("Number of fields: %d\n", numFields)
+
+					// Пример вывода всех полей
+					for i := 0; i < numFields; i++ {
+						field, err := csvparser.GetField(i)
+						if err != nil {
+							fmt.Println("Error getting field:", err)
+							return
+						}
+						fmt.Printf("Field %d: %s\n", i, field)
+					}
+				}
 				break // Конец файла, выходим
 			}
 			fmt.Println("Error reading line:", err)
