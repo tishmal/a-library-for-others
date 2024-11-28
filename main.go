@@ -57,6 +57,8 @@ func hasSuffix(line []byte, suffix byte) bool {
 func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 	var line []byte
 	buf := make([]byte, 1)
+	// Создаем объект, реализующий интерфейс CSVParser
+	var csvparser CSVParser = &csvParser{}
 
 	for {
 		n, err := r.Read(buf)
@@ -81,8 +83,30 @@ func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 				c.lastFields = parseFields(result)
 				c.numFields = len(c.lastFields)
 
+				// Обновляем поля с помощью parseFields
+				csvparser.(*csvParser).lastFields = parseFields([]byte(line))
+				csvparser.(*csvParser).numFields = len(csvparser.(*csvParser).lastFields)
+
+				// Выводим последнюю строку
+				fmt.Println("Read last line:", string(line))
+
+				// Пример вывода количества полей
+				numFields := csvparser.GetNumberOfFields()
+				fmt.Printf("Number of fields: %d\n", numFields)
+
+				// Пример вывода всех полей
+				for i := 0; i < numFields; i++ {
+					field, err := csvparser.GetField(i)
+					if err != nil {
+						fmt.Println("Error getting field:", err)
+						os.Exit(1)
+					}
+					fmt.Printf("Field %d: %s\n", i, string(field))
+				}
+
 				return string(result), io.EOF
 			}
+
 			return "", io.EOF
 		}
 
@@ -172,31 +196,7 @@ func main() {
 		line, err := csvparser.ReadLine(file)
 		if err != nil {
 			if err == io.EOF {
-				// После окончания файла, выводим последнюю строку
-				// Если строка не пуста
-				if len(line) > 0 {
-					// Обновляем поля с помощью parseFields
-					csvparser.(*csvParser).lastFields = parseFields([]byte(line))
-					csvparser.(*csvParser).numFields = len(csvparser.(*csvParser).lastFields)
-
-					// Выводим последнюю строку
-					fmt.Println("Read last line:", string(line))
-
-					// Пример вывода количества полей
-					numFields := csvparser.GetNumberOfFields()
-					fmt.Printf("Number of fields: %d\n", numFields)
-
-					// Пример вывода всех полей
-					for i := 0; i < numFields; i++ {
-						field, err := csvparser.GetField(i)
-						if err != nil {
-							fmt.Println("Error getting field:", err)
-							return
-						}
-						fmt.Printf("Field %d: %s\n", i, string(field))
-					}
-				}
-				break // Конец файла, выходим
+				break
 			}
 			fmt.Println("Error reading line:", err)
 			return
