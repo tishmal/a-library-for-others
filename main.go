@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 )
 
 var (
@@ -16,59 +14,106 @@ var (
 
 // Интерфейс CSVParser
 type CSVParser interface {
-	ReadLine(r io.Reader) (string, error)
-	GetField(n int) (string, error)
+	ReadLine(r io.Reader) ([]byte, error)
+	GetField(n int) ([]byte, error)
 	GetNumberOfFields() int
 }
 
 // Структура, реализующая интерфейс CSVParser
 type csvParser struct {
-	lastLine   string   // последняя прочитанная строка
-	lastFields []string // поля в последней строке
+	lastLine   []byte   // последняя прочитанная строка
+	lastFields [][]byte // поля в последней строке
 	numFields  int      // количество полей в последней строке
 }
 
+// Вспомогательная функция для удаления \r и \n справа
+func trimRight(line []byte) []byte {
+	for len(line) > 0 && (line[len(line)-1] == '\r' || line[len(line)-1] == '\n') {
+		line = line[:len(line)-1]
+	}
+	return line
+}
+
+// Вспомогательная функция проверки наличия символа в байтовом массиве
+func contains(line []byte, char byte) bool {
+	for _, b := range line {
+		if b == char {
+			return true
+		}
+	}
+	return false
+}
+
+// Вспомогательная функция проверки начала и конца строки
+func hasPrefix(line []byte, prefix byte) bool {
+	return len(line) > 0 && line[0] == prefix
+}
+
+func hasSuffix(line []byte, suffix byte) bool {
+	return len(line) > 0 && line[len(line)-1] == suffix
+}
+
 // Реализация метода ReadLine для структуры csvParser
-func (c *csvParser) ReadLine(r io.Reader) (string, error) {
-	// Чтение строки
-	bufReader := bufio.NewReader(r)
+func (c *csvParser) ReadLine(r io.Reader) ([]byte, error) {
+	var line []byte
+	buf := make([]byte, 1)
 
-	// Читаем строку
-	line, err := bufReader.ReadString('\n')
-	if err != nil {
-		// Если ошибка EOF, возвращаем пустую строку и nil (чтобы завершить чтение)
-		if err == io.EOF {
-			// Преобразуем строку, так как она может быть не полностью очищена от \n
-			line = strings.TrimRight(line, "\r\n")
-			return line, io.EOF
+	for {
+		n, err := r.Read(buf)
+		if err != nil && err != io.EOF {
+			return nil, err
 		}
-		return "", err
-	}
 
-	// Убираем символ новой строки
-	line = strings.TrimRight(line, "\r\n")
+		if n == 0 || err == io.EOF {
+			// Если строка не пустая, обработаем последнюю строку
+			if len(line) > 0 {
+				result := trimRight(line)
 
-	// Проверяем на лишние или отсутствующие кавычки
-	if strings.Contains(line, "\"") {
-		if !strings.HasPrefix(line, "\"") || !strings.HasSuffix(line, "\"") {
-			return "", ErrQuote
+				// Проверяем на лишние или отсутствующие кавычки
+				if contains(result, '"') {
+					if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
+						return nil, ErrQuote
+					}
+				}
+
+				// Обновляем состояние последней строки
+				c.lastLine = result
+				// Разделяем строку на поля
+				c.lastFields = parseFields(result)
+				c.numFields = len(c.lastFields)
+
+				return result, io.EOF
+			}
+			return nil, io.EOF
 		}
+
+		// Добавляем символ в строку
+		if buf[0] == '\n' {
+			result := trimRight(line)
+
+			// Проверяем на лишние или отсутствующие кавычки
+			if contains(result, '"') {
+				if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
+					return nil, ErrQuote
+				}
+			}
+
+			// Обновляем состояние последней строки
+			c.lastLine = result
+			// Разделяем строку на поля
+			c.lastFields = parseFields(result)
+			c.numFields = len(c.lastFields)
+
+			return result, nil
+		}
+		line = append(line, buf[0])
 	}
-
-	// Обновляем состояние последней строки
-	c.lastLine = line
-	// Разделяем строку на поля
-	c.lastFields = parseFields(line)
-	c.numFields = len(c.lastFields)
-
-	// Возвращаем строку
-	return line, nil
 }
 
 // parseFields разбивает строку на поля по запятым с учетом кавычек
-func parseFields(line string) []string {
-	var fields []string
-	var currentField strings.Builder
+func parseFields(line []byte) [][]byte {
+	var fields [][]byte
+	var currentField []byte
 	inQuotes := false
 
 	for i := 0; i < len(line); i++ {
@@ -78,24 +123,24 @@ func parseFields(line string) []string {
 			inQuotes = !inQuotes // переключаем состояние кавычек
 		} else if char == ',' && !inQuotes {
 			// если мы не внутри кавычек, то это конец поля
-			fields = append(fields, currentField.String())
-			currentField.Reset()
+			fields = append(fields, currentField)
+			currentField = nil
 		} else {
 			// добавляем символ в текущее поле
-			currentField.WriteByte(char)
+			currentField = append(currentField, char)
 		}
 	}
 
 	// Добавляем последнее поле
-	fields = append(fields, currentField.String())
+	fields = append(fields, currentField)
 
 	return fields
 }
 
 // Реализация метода GetField для структуры csvParser
-func (c *csvParser) GetField(n int) (string, error) {
+func (c *csvParser) GetField(n int) ([]byte, error) {
 	if n < 0 || n >= c.numFields {
-		return "", ErrFieldCount
+		return nil, ErrFieldCount
 	}
 	return c.lastFields[n], nil
 }
@@ -106,6 +151,11 @@ func (c *csvParser) GetNumberOfFields() int {
 }
 
 func main() {
+	args := os.Args
+	if len(args) > 1 {
+		fmt.Println("Incorrect input")
+		os.Exit(1)
+	}
 	// Открываем файл
 	file, err := os.Open("example.csv")
 	if err != nil {
@@ -117,24 +167,21 @@ func main() {
 	// Создаем объект, реализующий интерфейс CSVParser
 	var csvparser CSVParser = &csvParser{}
 
-	// Создаем буферизованный ридер для всего файла
-	bufReader := bufio.NewReader(file)
-
 	// Чтение строк из CSV файла
 	for {
 		// Чтение строки с помощью ReadLine
-		line, err := csvparser.ReadLine(bufReader)
+		line, err := csvparser.ReadLine(file)
 		if err != nil {
 			if err == io.EOF {
 				// После окончания файла, выводим последнюю строку
 				// Если строка не пуста
-				if line != "" {
+				if len(line) > 0 {
 					// Обновляем поля с помощью parseFields
 					csvparser.(*csvParser).lastFields = parseFields(line)
 					csvparser.(*csvParser).numFields = len(csvparser.(*csvParser).lastFields)
 
 					// Выводим последнюю строку
-					fmt.Println("Read last line:", line)
+					fmt.Println("Read last line:", string(line))
 
 					// Пример вывода количества полей
 					numFields := csvparser.GetNumberOfFields()
@@ -147,7 +194,7 @@ func main() {
 							fmt.Println("Error getting field:", err)
 							return
 						}
-						fmt.Printf("Field %d: %s\n", i, field)
+						fmt.Printf("Field %d: %s\n", i, string(field))
 					}
 				}
 				break // Конец файла, выходим
@@ -157,7 +204,7 @@ func main() {
 		}
 
 		// Выводим строку
-		fmt.Println("Read line:", line)
+		fmt.Println("Read line:", string(line))
 
 		// Пример вывода количества полей
 		numFields := csvparser.GetNumberOfFields()
@@ -170,7 +217,7 @@ func main() {
 				fmt.Println("Error getting field:", err)
 				return
 			}
-			fmt.Printf("Field %d: %s\n", i, field)
+			fmt.Printf("Field %d: %s\n", i, string(field))
 		}
 	}
 }
