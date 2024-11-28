@@ -14,8 +14,8 @@ var (
 
 // Интерфейс CSVParser
 type CSVParser interface {
-	ReadLine(r io.Reader) ([]byte, error)
-	GetField(n int) ([]byte, error)
+	ReadLine(r io.Reader) (string, error)
+	GetField(n int) (string, error)
 	GetNumberOfFields() int
 }
 
@@ -54,16 +54,15 @@ func hasSuffix(line []byte, suffix byte) bool {
 }
 
 // Реализация метода ReadLine для структуры csvParser
-func (c *csvParser) ReadLine(r io.Reader) ([]byte, error) {
+func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 	var line []byte
 	buf := make([]byte, 1)
 
 	for {
 		n, err := r.Read(buf)
 		if err != nil && err != io.EOF {
-			return nil, err
+			return "", err
 		}
-
 		if n == 0 || err == io.EOF {
 			// Если строка не пустая, обработаем последнюю строку
 			if len(line) > 0 {
@@ -72,7 +71,7 @@ func (c *csvParser) ReadLine(r io.Reader) ([]byte, error) {
 				// Проверяем на лишние или отсутствующие кавычки
 				if contains(result, '"') {
 					if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
-						return nil, ErrQuote
+						return "", ErrQuote
 					}
 				}
 
@@ -82,9 +81,9 @@ func (c *csvParser) ReadLine(r io.Reader) ([]byte, error) {
 				c.lastFields = parseFields(result)
 				c.numFields = len(c.lastFields)
 
-				return result, io.EOF
+				return string(result), io.EOF
 			}
-			return nil, io.EOF
+			return "", io.EOF
 		}
 
 		// Добавляем символ в строку
@@ -94,7 +93,7 @@ func (c *csvParser) ReadLine(r io.Reader) ([]byte, error) {
 			// Проверяем на лишние или отсутствующие кавычки
 			if contains(result, '"') {
 				if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
-					return nil, ErrQuote
+					return "", ErrQuote
 				}
 			}
 
@@ -104,7 +103,7 @@ func (c *csvParser) ReadLine(r io.Reader) ([]byte, error) {
 			c.lastFields = parseFields(result)
 			c.numFields = len(c.lastFields)
 
-			return result, nil
+			return string(result), nil
 		}
 		line = append(line, buf[0])
 	}
@@ -138,11 +137,11 @@ func parseFields(line []byte) [][]byte {
 }
 
 // Реализация метода GetField для структуры csvParser
-func (c *csvParser) GetField(n int) ([]byte, error) {
+func (c *csvParser) GetField(n int) (string, error) {
 	if n < 0 || n >= c.numFields {
-		return nil, ErrFieldCount
+		return "", ErrFieldCount
 	}
-	return c.lastFields[n], nil
+	return string(c.lastFields[n]), nil
 }
 
 // Реализация метода GetNumberOfFields для структуры csvParser
@@ -177,7 +176,7 @@ func main() {
 				// Если строка не пуста
 				if len(line) > 0 {
 					// Обновляем поля с помощью parseFields
-					csvparser.(*csvParser).lastFields = parseFields(line)
+					csvparser.(*csvParser).lastFields = parseFields([]byte(line))
 					csvparser.(*csvParser).numFields = len(csvparser.(*csvParser).lastFields)
 
 					// Выводим последнюю строку
