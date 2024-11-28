@@ -88,7 +88,7 @@ func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 				csvparser.(*csvParser).numFields = len(csvparser.(*csvParser).lastFields)
 
 				// Выводим последнюю строку
-				fmt.Println("Read last line:", string(line))
+				fmt.Println("Read line:", string(line))
 
 				// Пример вывода количества полей
 				numFields := csvparser.GetNumberOfFields()
