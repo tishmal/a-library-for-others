@@ -1,15 +1,14 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
 )
 
 var (
-	ErrQuote      = errors.New("excess or missing \" in quoted-field")
-	ErrFieldCount = errors.New("wrong number of fields")
+	ErrQuote      = New("excess or missing \" in quoted-field")
+	ErrFieldCount = New("wrong number of fields")
 )
 
 // Интерфейс CSVParser
@@ -24,6 +23,31 @@ type csvParser struct {
 	lastLine   []byte   // последняя прочитанная строка
 	lastFields [][]byte // поля в последней строке
 	numFields  int      // количество полей в последней строке
+}
+
+// errors:
+func New(text string) error {
+	return &errorString{text}
+}
+
+type errorString struct {
+	s string
+}
+
+func (e *errorString) Error() string {
+	return e.s
+}
+
+func isEmpty(r io.Reader) (bool, error) {
+	buf := make([]byte, 1)
+	_, err := r.Read(buf)
+	if err == io.EOF {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return false, nil
 }
 
 // Вспомогательная функция для удаления \r и \n справа
@@ -184,6 +208,15 @@ func main() {
 	if err != nil {
 		fmt.Println("Error opening file:", err)
 		return
+	}
+	stat, err := file.Stat()
+	if err != nil {
+		fmt.Println("information: could not get file stats")
+		os.Exit(1)
+	}
+	if stat.Size() == 0 {
+		fmt.Println("information: file is empty")
+		os.Exit(1)
 	}
 	defer file.Close()
 
