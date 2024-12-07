@@ -108,38 +108,36 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 					// }
 				}
 				if count%2 == 0 {
-					fmt.Println(string(result))
+					// Обновляем состояние последней строки
+					c.lastLine = result
+					// Разделяем строку на поля
+					c.lastFields = parseFields(result)
+					c.numFields = len(c.lastFields)
+
+					// Обновляем поля с помощью parseFields
+					csvparser.(*CsvParser).lastFields = parseFields([]byte(line))
+					csvparser.(*CsvParser).numFields = len(csvparser.(*CsvParser).lastFields)
+
+					// Выводим последнюю строку
+					fmt.Println("Read line:", string(line))
+
+					// Пример вывода количества полей
+					numFields := csvparser.GetNumberOfFields()
+					fmt.Printf("Number of fields: %d\n", numFields)
+
+					// Пример вывода всех полей
+					for i := 0; i < numFields; i++ {
+						field, err := csvparser.GetField(i)
+						if err != nil {
+							fmt.Println("Error getting field:", err)
+						}
+						fmt.Printf("Field %d: %s\n", i, string(field))
+					}
+
+					return string(result), io.EOF
 				} else {
 					return "", ErrQuote
 				}
-
-				// Обновляем состояние последней строки
-				c.lastLine = result
-				// Разделяем строку на поля
-				c.lastFields = parseFields(result)
-				c.numFields = len(c.lastFields)
-
-				// Обновляем поля с помощью parseFields
-				csvparser.(*CsvParser).lastFields = parseFields([]byte(line))
-				csvparser.(*CsvParser).numFields = len(csvparser.(*CsvParser).lastFields)
-
-				// Выводим последнюю строку
-				fmt.Println("Read line:", string(line))
-
-				// Пример вывода количества полей
-				numFields := csvparser.GetNumberOfFields()
-				fmt.Printf("Number of fields: %d\n", numFields)
-
-				// Пример вывода всех полей
-				for i := 0; i < numFields; i++ {
-					field, err := csvparser.GetField(i)
-					if err != nil {
-						fmt.Println("Error getting field:", err)
-					}
-					fmt.Printf("Field %d: %s\n", i, string(field))
-				}
-
-				return string(result), io.EOF
 			}
 
 			return "", io.EOF
@@ -150,9 +148,13 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 			result := trimRight(line)
 			// Проверяем на лишние или отсутствующие кавычки
 			if contains(result, '"') {
+				// if !hasPrefix(result, '"') && !hasSuffix(result, '"') {
+				// 	return string(line), nil
+				// }
+
 				for i := 0; i < len(line); i++ {
-					count++
 					if line[i] == '"' {
+						count++
 						line[i] = 0
 					}
 				}
@@ -161,19 +163,18 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 				// 	return "", ErrQuote
 				// }
 			}
+
 			if count%2 == 0 {
-				fmt.Println(string(result))
+				// Обновляем состояние последней строки
+				c.lastLine = result
+				// Разделяем строку на поля
+				c.lastFields = parseFields(result)
+				c.numFields = len(c.lastFields)
+
+				return string(result), nil
 			} else {
 				return "", ErrQuote
 			}
-
-			// Обновляем состояние последней строки
-			c.lastLine = result
-			// Разделяем строку на поля
-			c.lastFields = parseFields(result)
-			c.numFields = len(c.lastFields)
-
-			return string(result), nil
 		}
 		line = append(line, buf[0])
 	}
