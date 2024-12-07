@@ -89,6 +89,7 @@ func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 		if err != nil && err != io.EOF {
 			return "", err
 		}
+
 		if n == 0 || err == io.EOF {
 			// Если строка не пустая, обработаем последнюю строку
 			if len(line) > 0 {
@@ -96,9 +97,21 @@ func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 
 				// Проверяем на лишние или отсутствующие кавычки
 				if contains(result, '"') {
-					if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
-						return "", ErrQuote
+					for i := 0; i < len(line); i++ {
+						count++
+						if line[i] == '"' {
+							line[i] = 0
+						}
 					}
+
+					// if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
+					// 	return "", ErrQuote
+					// }
+				}
+				if count%2 == 0 {
+					fmt.Println(string(result))
+				} else {
+					return "", ErrQuote
 				}
 
 				// Обновляем состояние последней строки
@@ -262,5 +275,6 @@ func main() {
 			}
 			fmt.Printf("Field %d: %s\n", i, string(field))
 		}
+		fmt.Println()
 	}
 }
