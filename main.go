@@ -83,7 +83,7 @@ func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 	buf := make([]byte, 1)
 	// Создаем объект, реализующий интерфейс CSVParser
 	var csvparser CSVParser = &csvParser{}
-
+	var count int
 	for {
 		n, err := r.Read(buf)
 		if err != nil && err != io.EOF {
@@ -137,12 +137,23 @@ func (c *csvParser) ReadLine(r io.Reader) (string, error) {
 		// Добавляем символ в строку
 		if buf[0] == '\n' {
 			result := trimRight(line)
-
 			// Проверяем на лишние или отсутствующие кавычки
 			if contains(result, '"') {
-				if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
-					return "", ErrQuote
+				for i := 0; i < len(line); i++ {
+					count++
+					if line[i] == '"' {
+						line[i] = 0
+					}
 				}
+
+				// if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
+				// 	return "", ErrQuote
+				// }
+			}
+			if count%2 == 0 {
+				fmt.Println(string(result))
+			} else {
+				return "", ErrQuote
 			}
 
 			// Обновляем состояние последней строки
