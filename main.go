@@ -42,7 +42,7 @@ func main() {
 		}
 
 		// Выводим строку
-		fmt.Println("Read line:", string(line))
+		fmt.Println("Read line:", line)
 
 		// Пример вывода количества полей
 		numFields := csvparser.GetNumberOfFields()

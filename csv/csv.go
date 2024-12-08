@@ -98,14 +98,7 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 				if contains(result, '"') {
 					for i := 0; i < len(line); i++ {
 						count++
-						if line[i] == '"' {
-							line[i] = 0
-						}
 					}
-
-					// if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
-					// 	return "", ErrQuote
-					// }
 				}
 				if count%2 == 0 {
 					// Обновляем состояние последней строки
@@ -134,7 +127,12 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 						fmt.Printf("Field %d: %s\n", i, string(field))
 					}
 
-					return string(result), io.EOF
+					for i := 0; i < len(result); i++ {
+						if result[i] == '"' {
+							result[i] = 0
+						}
+					}
+					return string(line), io.EOF
 				} else {
 					return "", ErrQuote
 				}
@@ -155,13 +153,9 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 				for i := 0; i < len(line); i++ {
 					if line[i] == '"' {
 						count++
-						line[i] = 0
+						//line[i] = 0
 					}
 				}
-
-				// if !hasPrefix(result, '"') || !hasSuffix(result, '"') {
-				// 	return "", ErrQuote
-				// }
 			}
 
 			if count%2 == 0 {
