@@ -97,7 +97,9 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 				// Проверяем на лишние или отсутствующие кавычки
 				if contains(result, '"') {
 					for i := 0; i < len(line); i++ {
-						count++
+						if line[i] == '"' {
+							count++
+						}
 					}
 				}
 				if count%2 == 0 {
@@ -134,6 +136,7 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 					}
 					return string(line), io.EOF
 				} else {
+					fmt.Println("d")
 					return "", ErrQuote
 				}
 			}

@@ -1,11 +1,10 @@
 package main
 
 import (
+	"a-library-for-others/csv"
 	"fmt"
 	"io"
 	"os"
-
-	"a-library-for-others/csv"
 )
 
 func main() {
@@ -50,7 +49,7 @@ func main() {
 
 		// Пример вывода всех полей
 		for i := 0; i < numFields; i++ {
-			field, err := csvparser.GetField(i)
+			field, err := csvparser.GetField(-1)
 			if err != nil {
 				fmt.Println("Error getting field:", err)
 				return
