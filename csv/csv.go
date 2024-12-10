@@ -136,11 +136,9 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 					}
 					return string(line), io.EOF
 				} else {
-					fmt.Println("d")
 					return "", ErrQuote
 				}
 			}
-
 			return "", io.EOF
 		}
 
@@ -156,12 +154,12 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 				for i := 0; i < len(line); i++ {
 					if line[i] == '"' {
 						count++
-						//line[i] = 0
 					}
 				}
 			}
+			fmt.Println(count)
 
-			if count%2 == 0 {
+			if count%2 == 0 || count == 1 && hasPrefix(result, '"') || hasPrefix(result, ',') {
 				// Обновляем состояние последней строки
 				c.lastLine = result
 				// Разделяем строку на поля
@@ -170,6 +168,7 @@ func (c *CsvParser) ReadLine(r io.Reader) (string, error) {
 
 				return string(result), nil
 			} else {
+				fmt.Println("d")
 				return "", ErrQuote
 			}
 		}
